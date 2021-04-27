@@ -42,11 +42,9 @@ function AddEdit({ history, match }) {
     setStatus();
     if (isAddMode) {
       // SE O ID É VAZIO - SETA FUNÇAO createUser - NOVO CADASTRO
-      console.log("NOVO CADASTRO - SETA funçao createUser");
       createUser(fields, setSubmitting);
     } else {
       // SE O ID TEM VALORES - SETA FUNÇAO updateUser - EDITAR CADASTRO
-      console.log("EDITAR CADASTRO - SETA FUNÇAO updateUser");
       updateUser(id, fields, setSubmitting);
     }
   }
@@ -60,7 +58,7 @@ function AddEdit({ history, match }) {
         });
         history.push(".");
       })
-      .catch(() => {
+      .catch((error) => {
         setSubmitting(false);
         alertService.error(error);
       });
@@ -105,6 +103,8 @@ function AddEdit({ history, match }) {
               fields.forEach((field) =>
                 setFieldValue(field, user[field], false)
               );
+              console.log(user);
+
               setUser(user);
             });
           }

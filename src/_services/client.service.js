@@ -1,9 +1,9 @@
 import config from 'config';
 import { fetchWrapper } from '@/_helpers';
 
-const baseUrl = `${config.apiUrl}/users`;
+const baseUrl = `${config.apiUrl}/clients`;
 
-export const userService = {
+export const clientService = {
     getAll,
     getById,
     create,
@@ -16,8 +16,6 @@ function getAll() {
 }
 
 function getById(id) {
-    console.log('Passei aqui! usuario '+ id)
-
     return fetchWrapper.get(`${baseUrl}/${id}`);
 }
 
