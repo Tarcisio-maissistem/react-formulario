@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import firebaseDb from "../_helpers/firebase";
 import "firebase/database";
+import { useListKeys } from 'react-firebase-hooks/database';
 import { Role } from './'
-import swal from "sweetalert";
 
 export function configureFakeBackend() {
     // array no armazenamento local para registros do usuário
@@ -15,7 +14,6 @@ export function configureFakeBackend() {
         role: Role.User,
         password: 'joe123'
     }];
-    // console.log(users)
 
     // monkey patch fetch para configurar back-end falso
     let realFetch = window.fetch;
@@ -85,8 +83,6 @@ export function configureFakeBackend() {
                 user.dateCreated = new Date().toISOString();
                 delete user.confirmPassword;
                 users.push(user);
-                //localStorage.setItem('users', JSON.stringify(users));
-
                 firebaseDb.child('users').child(user.id).set(
                     user,
                     err => {
@@ -99,38 +95,32 @@ export function configureFakeBackend() {
 
             function createClient() {
                 try {
+                    let newClients = [];
+
                     const client = body();
                     const idClient = client.cpfcnpj;
-                    client.dateCreated = new Date().toISOString();
+                    client.dateCreated = new Date();
 
-                    firebaseDb.child("clients").once("value", function (dataSnapshot) {
-                        let keysId = [];
-                        dataSnapshot.forEach(function (childSnapshot) {
-                            let key = childSnapshot.key;
-                            keysId.push(key);
-                        });
-                        // keysId.includes(id) ? console.log("Ja tem") : console.log("Novo")
-                        if (keysId.includes(idClient)) {
-                            console.log('Ja existe no Banco')
-                            return error(`Cliente já existente!`);
-                        } else {
-                            firebaseDb.child(`clients/${idClient}`).set(
-                                client,
-                                err => {
-                                    if (err) {
-                                        console.log(err)
-                                    }
-                                }
-                            )
-                            console.log('Cliente Cadastrado!')
-                            return ok();
+                    firebaseDb.firestore().collection("clients").onSnapshot((snapshot) => {
+                        // newClients.push(snapshot.docs.map((doc) => (doc.id)))
+                        newClients.push(snapshot.forEach(function (doc) { doc.id }))
+                        console.log(newClients)
 
-                        }
                     })
+
+                    if (newClients.includes(idClient)) {
+                        console.log('Ja existe no Banco')
+                        return error(`Cliente já existente!`);
+                    }
+
+                    firebaseDb.firestore().collection(`clients`).doc(idClient).set(client);
+                    console.log('Cliente Cadastrado!')
+                    return ok();
                 }
                 catch (e) {
-                    logMyErrors(e)
+                    return console.log(e);
                 }
+
             }
 
             function updateUser() {

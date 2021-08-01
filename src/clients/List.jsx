@@ -4,26 +4,23 @@ import firebaseDb from "../_helpers/firebase";
 import "firebase/database";
 import swal from "sweetalert";
 
-import { clientService } from "@/_services";
-
 function List({ match }) {
   const { path } = match;
   const [clients, setClients] = useState(null);
 
-  // CRIANDO LISTA DE CLIENTES INICIAL
   useEffect(() => {
-    firebaseDb.child("clients").on("value", function (dataSnapshot) {
-      const allClients = [];
-      dataSnapshot.forEach(function (childSnapshot) {
-        allClients.push(childSnapshot.val());
+    const listClients = firebaseDb
+      .firestore()
+      .collection("clients")
+      .onSnapshot((snapshot) => {
+        const newClients = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setClients(newClients);
       });
-      setClients(allClients);
-    });
-
-    // Antigo
-    //clientService.getAll().then((x) => setClients(x));
+    return () => listClients();
   }, []);
-  //console.log(JSON.stringify(clientService));
 
   function deleteClient(id) {
     swal({
@@ -31,13 +28,12 @@ function List({ match }) {
       text: "Você irá remover esse cadastro",
       icon: "warning",
       buttons: ["Não!", "Sim!"],
-      dangerMode: true,
+      dangerMode: true
     }).then(function (isConfirm) {
       if (isConfirm) {
         firebaseDb.child(`clients/${id}`).remove((err) => {
           if (err) console.log(err);
-          else 
-          swal("Removido!", "", "success");
+          else swal("Removido!", "", "success");
         });
       } else {
         swal("Cancelado!", "seu arquivo está seguro!", "error");

@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Formik, Field, Form, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import firebaseDb from "../_helpers/firebase";
 import "firebase/database";
 import fetchJsonp from "fetch-jsonp";
-
 import { clientService, alertService } from "@/_services";
 
 function AddEdit({ history, match }) {
   const { id } = match.params;
   const isAddMode = !id;
-  const [chavesId, setChavesId] = useState({});
+  const [client, setClient] = useState(initialValues);
 
   const initialValues = {
     cpfcnpj: "",
@@ -33,11 +32,17 @@ function AddEdit({ history, match }) {
     sistema2: "",
     validade: "",
     obs: "",
+    registro: "",
+    anydesk: "",
+    mensalidade: "",
+    receberdia: "",
+    custo: "",
+    pagardia: ""
   };
 
   const validationSchema = Yup.object().shape({
     cpfcnpj: Yup.string().required("CPF ou CNPJ é Obrigatório"),
-    fantasia: Yup.string().min(2).required("Campo Fantasia é Obrigatório"),
+    fantasia: Yup.string().min(2).required("Campo Fantasia é Obrigatório")
   });
 
   function onSubmit(fields, { setStatus, setSubmitting }) {
@@ -50,27 +55,38 @@ function AddEdit({ history, match }) {
   }
 
   function createClient(fields, setSubmitting) {
-    clientService
-      .create(fields)
+    let upClient = firebaseDb
+      .firestore()
+      .collection("clients")
+      .doc(fields.cpfcnpj)
+      .set(fields)
       .then(() => {
-        setChavesId({});
         alertService.success("Cliente adicionado", {
-          keepAfterRouteChange: true,
+          keepAfterRouteChange: true
         });
         history.push(".");
+        // setClient(initialValues);
+        // setClient({ ...initialValues });
       })
       .catch((error) => {
         setSubmitting(false);
         alertService.error(error);
       });
+
+    console.log("Cliente Adicionado!");
+    setClient({ ...initialValues });
+    return () => upClient();
   }
 
   function updateClient(id, fields, setSubmitting) {
-    clientService
-      .update(id, fields)
+    const upClient = firebaseDb
+      .firestore()
+      .collection("clients")
+      .doc(id)
+      .update(fields)
       .then(() => {
         alertService.success("Cliente atualizado", {
-          keepAfterRouteChange: true,
+          keepAfterRouteChange: true
         });
         history.push("..");
       })
@@ -78,20 +94,25 @@ function AddEdit({ history, match }) {
         setSubmitting(false);
         alertService.error(error);
       });
+
+    console.log("Cliente Atualizado");
+    return () => upClient();
   }
 
   function onBlurCNPJ(ev, setFieldValue) {
     const { value } = ev.target;
     //a interrogação depois da variavel identifica se exite tal variavel
     const campoCNPJ = value?.replace(/[^0-9]/g, "");
-
     if (campoCNPJ?.length !== 14) {
       return;
     }
-    fetchJsonp("https://www.receitaws.com.br/v1/cnpj/" + campoCNPJ)
+    fetchJsonp(`https://www.receitaws.com.br/v1/cnpj/${campoCNPJ}`)
       .then((res) => res.json())
       .then((data) => {
-        setFieldValue("contato", data.nome);
+        if (data.qsa[0] != undefined) {
+          setFieldValue("contato", data.qsa[0].nome);
+        }
+
         setFieldValue("cpfcnpj", data.cnpj.replace(/[^0-9]/g, ""));
         setFieldValue("fantasia", data.fantasia);
         setFieldValue("razao", data.nome);
@@ -114,7 +135,6 @@ function AddEdit({ history, match }) {
     if (cep?.length !== 8) {
       return;
     }
-
     fetchJsonp(`https://viacep.com.br/ws/${cep}/json/`)
       .then((res) => res.json())
       .then((data) => {
@@ -132,60 +152,51 @@ function AddEdit({ history, match }) {
       onSubmit={onSubmit}
     >
       {({ errors, touched, isSubmitting, setFieldValue }) => {
-        const [client, setClient] = useState({});
-
         useEffect(() => {
-          let unmounted = false;
-          if (!isAddMode) {
-            firebaseDb.child(`clients/${id}`).once("value", (dataSnapshot) => {
-              console.log(dataSnapshot.val());
-
-              setClient({
-                ...dataSnapshot.val(),
-              });
-              setFieldValue("cpfcnpj", dataSnapshot.val().cpfcnpj);
-              setFieldValue("rgie", dataSnapshot.val().rgie);
-              setFieldValue("contato", dataSnapshot.val().contato);
-              setFieldValue("fantasia", dataSnapshot.val().fantasia);
-              setFieldValue("razao", dataSnapshot.val().razao);
-              setFieldValue("telefone", dataSnapshot.val().telefone);
-              setFieldValue("email", dataSnapshot.val().email);
-              setFieldValue("cep", dataSnapshot.val().cep);
-              setFieldValue("rua", dataSnapshot.val().rua);
-              setFieldValue("numero", dataSnapshot.val().numero);
-              setFieldValue("complemento", dataSnapshot.val().complemento);
-              setFieldValue("bairro", dataSnapshot.val().bairro);
-              setFieldValue("cidade", dataSnapshot.val().cidade);
-              setFieldValue("uf", dataSnapshot.val().uf);
-              setFieldValue("atualizado", dataSnapshot.val().atualizado);
-              setFieldValue("sistema1", dataSnapshot.val().sistema1);
-              setFieldValue("sistema2", dataSnapshot.val().sistema2);
-              setFieldValue("validade", dataSnapshot.val().validade);
-              setFieldValue("obs", dataSnapshot.val().obs);
-            });
+          if (isAddMode) {
+            setFieldValue({ ...initialValues });
           } else {
-            // CONSULTA FIREBASE LISTA DE CLIENTES
-            firebaseDb.child("clients").once("value", function (dataSnapshot) {
-              let keysId = [];
-              dataSnapshot.forEach(function (childSnapshot) {
-                let key = childSnapshot.key;
-                keysId.push(key);
+            let listClient = firebaseDb
+              .firestore()
+              .collection("clients")
+              .doc(id)
+              .onSnapshot((dataSnapshot) => {
+                setFieldValue("cpfcnpj", dataSnapshot.data().cpfcnpj);
+                setFieldValue("rgie", dataSnapshot.data().rgie);
+                setFieldValue("contato", dataSnapshot.data().contato);
+                setFieldValue("fantasia", dataSnapshot.data().fantasia);
+                setFieldValue("razao", dataSnapshot.data().razao);
+                setFieldValue("telefone", dataSnapshot.data().telefone);
+                setFieldValue("email", dataSnapshot.data().email);
+                setFieldValue("cep", dataSnapshot.data().cep);
+                setFieldValue("rua", dataSnapshot.data().rua);
+                setFieldValue("numero", dataSnapshot.data().numero);
+                setFieldValue("complemento", dataSnapshot.data().complemento);
+                setFieldValue("bairro", dataSnapshot.data().bairro);
+                setFieldValue("cidade", dataSnapshot.data().cidade);
+                setFieldValue("uf", dataSnapshot.data().uf);
+                setFieldValue("atualizado", dataSnapshot.data().atualizado);
+                setFieldValue("sistema1", dataSnapshot.data().sistema1);
+                setFieldValue("sistema2", dataSnapshot.data().sistema2);
+                setFieldValue("validade", dataSnapshot.data().validade);
+                setFieldValue("obs", dataSnapshot.data().obs);
+                setFieldValue("registro", dataSnapshot.data().registro);
+                setFieldValue("anydesk", dataSnapshot.data().anydesk);
+                setFieldValue("mensalidade", dataSnapshot.data().mensalidade);
+                setFieldValue("receberdia", dataSnapshot.data().receberdia);
+                setFieldValue("custo", dataSnapshot.data().custo);
+                setFieldValue("pagardia", dataSnapshot.data().pagardia);
               });
-              // console.log(keysId);
-              setChavesId(keysId);
-            });
+            return () => listClient();
           }
-          return () => {
-            unmounted = true;
-          };
-        }, []);
+        }, [id]);
 
         return (
           <Form>
             <h1>{isAddMode ? "Adicionar Cliente" : "Editar Cliente"}</h1>
             <div className="form-row">
               <div className="form-group col-4">
-                <label>CPF/CNPJ</label>
+                <label>CPF ou CNPJ</label>
                 <Field
                   name="cpfcnpj"
                   type="text"
@@ -203,37 +214,13 @@ function AddEdit({ history, match }) {
               </div>
 
               <div className="form-group col-4">
-                <label>RG / IE</label>
-                <Field
-                  name="rgie"
-                  type="text"
-                  className={
-                    "form-control" +
-                    (errors.rgie && touched.rgie ? " is-invalid" : "")
-                  }
-                />
-                <ErrorMessage
-                  name="rgie"
-                  component="div"
-                  className="invalid-feedback"
-                />
+                <label>RG ou IE</label>
+                <Field name="rgie" type="text" className="form-control" />
               </div>
 
               <div className="form-group col-4">
                 <label>Contato</label>
-                <Field
-                  name="contato"
-                  type="text"
-                  className={
-                    "form-control" +
-                    (errors.contato && touched.contato ? " is-invalid" : "")
-                  }
-                />
-                <ErrorMessage
-                  name="contato"
-                  component="div"
-                  className="invalid-feedback"
-                />
+                <Field name="contato" type="text" className="form-control" />
               </div>
             </div>
 
@@ -257,19 +244,7 @@ function AddEdit({ history, match }) {
 
               <div className="form-group col-6">
                 <label>Razão Social</label>
-                <Field
-                  name="razao"
-                  type="text"
-                  className={
-                    "form-control" +
-                    (errors.razao && touched.razao ? " is-invalid" : "")
-                  }
-                />
-                <ErrorMessage
-                  name="razao"
-                  component="div"
-                  className="invalid-feedback"
-                />
+                <Field name="razao" type="text" className="form-control" />
               </div>
             </div>
 
@@ -314,7 +289,7 @@ function AddEdit({ history, match }) {
             </label>
 
             <div className="form-row">
-              <div className="form-group col-3">
+              <div className="form-group col-2">
                 <label>CEP</label>
                 <Field
                   name="cep"
@@ -326,7 +301,7 @@ function AddEdit({ history, match }) {
                   }
                 />
                 <ErrorMessage
-                  name="email"
+                  name="cep"
                   component="div"
                   className="invalid-feedback"
                 />
@@ -334,93 +309,35 @@ function AddEdit({ history, match }) {
 
               <div className="form-group col-5">
                 <label>Rua</label>
-                <Field
-                  name="rua"
-                  type="text"
-                  className={
-                    "form-control" +
-                    (errors.rua && touched.rua ? " is-invalid" : "")
-                  }
-                />
-                <ErrorMessage
-                  name="rua"
-                  component="div"
-                  className="invalid-feedback"
-                />
+                <Field name="rua" type="text" className="form-control" />
+              </div>
+
+              <div className="form-group col-2">
+                <label>Número</label>
+                <Field name="numero" type="text" className="form-control" />
               </div>
 
               <div className="form-group col-3">
-                <label>Numero</label>
-                <Field
-                  name="numero"
-                  type="text"
-                  className={
-                    "form-control" +
-                    (errors.numero && touched.numero ? " is-invalid" : "")
-                  }
-                />
-                <ErrorMessage
-                  name="numero"
-                  component="div"
-                  className="invalid-feedback"
-                />
-              </div>
-
-              <div className="form-group col-5">
                 <label>Complemento</label>
                 <Field
                   name="complemento"
                   type="text"
-                  className={
-                    "form-control" +
-                    (errors.complemento && touched.complemento
-                      ? " is-invalid"
-                      : "")
-                  }
-                />
-                <ErrorMessage
-                  name="complemento"
-                  component="div"
-                  className="invalid-feedback"
+                  className="form-control"
                 />
               </div>
 
-              <div className="form-group col-5">
+              <div className="form-group col-4">
                 <label>Bairro</label>
-                <Field
-                  name="bairro"
-                  type="text"
-                  className={
-                    "form-control" +
-                    (errors.bairro && touched.bairro ? " is-invalid" : "")
-                  }
-                />
-                <ErrorMessage
-                  name="bairro"
-                  component="div"
-                  className="invalid-feedback"
-                />
+                <Field name="bairro" type="text" className="form-control" />
               </div>
 
               <div className="form-group col-5">
                 <label>Cidade</label>
-                <Field
-                  name="cidade"
-                  type="text"
-                  className={
-                    "form-control" +
-                    (errors.cidade && touched.cidade ? " is-invalid" : "")
-                  }
-                />
-                <ErrorMessage
-                  name="cidade"
-                  component="div"
-                  className="invalid-feedback"
-                />
+                <Field name="cidade" type="text" className="form-control" />
               </div>
 
               <div className="form-group col-3">
-                <label>UF</label>
+                <label>Estado</label>
                 <Field component="select" className="form-control" name="uf">
                   <option value={null}>Selecione o Estado</option>
                   <option value="AC">Acre</option>
@@ -451,19 +368,6 @@ function AddEdit({ history, match }) {
                   <option value="SE">Sergipe</option>
                   <option value="TO">Tocantins</option>
                 </Field>
-                {/* <Field
-                  name="uf"
-                  type="text"
-                  className={
-                    "form-control" +
-                    (errors.uf && touched.uf ? " is-invalid" : "")
-                  }
-                />
-                <ErrorMessage
-                  name="uf"
-                  component="div"
-                  className="invalid-feedback"
-                /> */}
               </div>
             </div>
 
@@ -474,50 +378,26 @@ function AddEdit({ history, match }) {
             <div className="form-row">
               <div className="form-group col-3">
                 <label>Sistema 1</label>
-                <Field
-                  name="sistema1"
-                  as="select"
-                  className={
-                    "form-control" +
-                    (errors.sistema1 && touched.sistema1 ? " is-invalid" : "")
-                  }
-                >
-                  <option value="Gdoor PRO">Gdoor PRO</option>
-                  <option value="Gdoor SLIM">Gdoor SLIM</option>
-                  <option value="GrFood">GrFood</option>
+                <Field name="sistema1" as="select" className="form-control">
+                  <option value="Nenhum">Nenhum</option>
+                  <option value="Gdoor_PRO">Gdoor PRO</option>
+                  <option value="Gdoor_SLIM">Gdoor SLIM</option>
+                  <option value="GrFood">GRFood</option>
+                  <option value="Acronyn_Fiscal">Acronyn Fiscal</option>
                   <option value="TEF">TEF</option>
-                  <option value="Acronyn Fiscal">Acronyn Fiscal</option>
-                  <option value="Acronyn Gestão">Acronyn Gestão</option>
                 </Field>
-                <ErrorMessage
-                  name="sistema1"
-                  component="div"
-                  className="invalid-feedback"
-                />
               </div>
 
               <div className="form-group col-3">
                 <label>Sistema 2</label>
-                <Field
-                  name="sistema2"
-                  as="select"
-                  className={
-                    "form-control" +
-                    (errors.sistema2 && touched.sistema2 ? " is-invalid" : "")
-                  }
-                >
-                  <option value="Gdoor PRO">Gdoor PRO</option>
-                  <option value="Gdoor SLIM">Gdoor SLIM</option>
-                  <option value="GrFood">GrFood</option>
+                <Field name="sistema2" as="select" className="form-control">
+                  <option value="Nenhum">Nenhum</option>
+                  <option value="Gdoor_PRO">Gdoor PRO</option>
+                  <option value="Gdoor_SLIM">Gdoor SLIM</option>
+                  <option value="GrFood">GRFood</option>
+                  <option value="Acronyn_Fiscal">Acronyn Fiscal</option>
                   <option value="TEF">TEF</option>
-                  <option value="Acronyn Fiscal">Acronyn Fiscal</option>
-                  <option value="Acronyn Gestão">Acronyn Gestão</option>
                 </Field>
-                <ErrorMessage
-                  name="sistema2"
-                  component="div"
-                  className="invalid-feedback"
-                />
               </div>
 
               <div className="form-group col-3">
@@ -532,36 +412,75 @@ function AddEdit({ history, match }) {
                 />
                 <ErrorMessage name="validade" className="invalid-feedback" />
               </div>
+              <div className="form-row">
+                <div className="form-group col-6">
+                  <label>Número de Registro</label>
+                  <Field name="registro" type="text" className="form-control" />
+                </div>
+                <div className="form-group col-5">
+                  <label>Anydesk</label>
+                  <Field name="anydesk" type="text" className="form-control" />
+                </div>
+              </div>
 
-              <div className="form-group col-8">
+              <div className="form-group col-12">
                 <label>Observação</label>
+                <Field name="obs" type="textarea" className="form-control" />
+              </div>
+            </div>
+
+            <label>
+              <strong>Financeiro</strong>
+            </label>
+
+            <div className="form-row">
+              <div className="form-group col-2">
+                <label>Mensalidade</label>
                 <Field
-                  name="obs"
-                  type="textarea"
-                  className={
-                    "form-control" +
-                    (errors.obs && touched.obs ? " is-invalid" : "")
-                  }
+                  name="mensalidade"
+                  type="text"
+                  className="form-control"
                 />
-                <ErrorMessage
-                  name="obs"
-                  component="div"
-                  className="invalid-feedback"
-                />
+              </div>
+              <div className="form-group col-2">
+                <label>Receber:</label>
+                <Field name="receberdia" type="text" className="form-control" />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group col-2">
+                <label>Custo</label>
+                <Field name="custo" type="text" className="form-control" />
+              </div>
+
+              <div className="form-group col-2">
+                <label>Pagar:</label>
+                <Field name="pagardia" type="text" className="form-control" />
               </div>
             </div>
 
             <div className="form-group">
+              {/* <button
+                type="submit"
+                // className="btn btn-success btn-block"
+                disabled={isSubmitting && (
+                  <span className="spinner-border spinner-border-sm mr-1"></span>
+                )}
+              >
+                {isAddMode ? "Salvar" : "Atualizar"}
+              </button> */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn btn-primary"
+                className="btn btn-success"
               >
                 {isSubmitting && (
                   <span className="spinner-border spinner-border-sm mr-1"></span>
                 )}
-                Salvar
+                {isAddMode ? "Salvar" : "Atualizar"}
               </button>
+
               <Link to={isAddMode ? "." : ".."} className="btn btn-link">
                 Cancelar
               </Link>
