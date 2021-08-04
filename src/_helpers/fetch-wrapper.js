@@ -39,7 +39,6 @@ function _delete(url) {
 }
 
 // helper functions
-
 function handleResponse(response) {
     return response.text().then(text => {
         const data = text && JSON.parse(text);

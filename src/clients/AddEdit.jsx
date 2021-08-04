@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Formik, Field, Form, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import firebaseDb from "../_helpers/firebase";
-import "firebase/database";
+import swal from "sweetalert";
 import fetchJsonp from "fetch-jsonp";
 import { clientService, alertService } from "@/_services";
 
@@ -11,6 +11,8 @@ function AddEdit({ history, match }) {
   const { id } = match.params;
   const isAddMode = !id;
   const [client, setClient] = useState(initialValues);
+  const [cnpjs, setCnpjs] = useState([]);
+  const db = firebaseDb.firestore().collection("clients");
 
   const initialValues = {
     cpfcnpj: "",
@@ -55,48 +57,68 @@ function AddEdit({ history, match }) {
   }
 
   function createClient(fields, setSubmitting) {
-    let upClient = firebaseDb
-      .firestore()
-      .collection("clients")
-      .doc(fields.cpfcnpj)
-      .set(fields)
-      .then(() => {
-        alertService.success("Cliente adicionado", {
-          keepAfterRouteChange: true
-        });
-        history.push(".");
-        // setClient(initialValues);
-        // setClient({ ...initialValues });
-      })
-      .catch((error) => {
-        setSubmitting(false);
-        alertService.error(error);
-      });
+    // console.log(cnpjs);
+    try {
+      if (cnpjs.includes(fields.cpfcnpj)) {
+        console.log("Ja existe no Banco");
 
-    console.log("Cliente Adicionado!");
-    setClient({ ...initialValues });
-    return () => upClient();
+        // swal("Cancelado!", "Cliente ja existente!", "error");
+        // setSubmitting(false);
+
+        // return alertService.error(error);
+        swal({
+          title: "Cliente já existe! Deseja atualizar?",
+          text: "Se confirmar iremos atualizar-lo",
+          icon: "warning",
+          buttons: true,
+          dangerMode: true
+        }).then((willDelete) => {
+          if (willDelete) {
+            // Atualizando o cliente já existente!
+            updateClient(fields.cpfcnpj, fields, setSubmitting);
+          } else {
+            // Ao clicar no botão ok, ele permanece na tela de cadastro
+            swal("Cancelado!", "", "success", {
+              keepAfterRouteChange: true
+            });
+            setSubmitting(false);
+          }
+        });
+      } else {
+        // Criando o Cliente no banco
+        db.doc(fields.cpfcnpj)
+          .set(fields)
+          .then(() => {
+            swal("Cliente Adicionado!", "click em OK", "success", {
+              keepAfterRouteChange: true
+            });
+            // Retorna a Listagem de Clientes
+          });
+        history.push(".");
+
+        setClient({ ...initialValues });
+      }
+    } catch (error) {
+      setSubmitting(false);
+      alertService.error(error);
+    }
   }
 
   function updateClient(id, fields, setSubmitting) {
-    const upClient = firebaseDb
-      .firestore()
-      .collection("clients")
-      .doc(id)
+    db.doc(id)
       .update(fields)
       .then(() => {
-        alertService.success("Cliente atualizado", {
-          keepAfterRouteChange: true
+        swal("Cliente Atualizado!", {
+          icon: "success"
         });
-        history.push("..");
-      })
-      .catch((error) => {
-        setSubmitting(false);
-        alertService.error(error);
+        keepAfterRouteChange: true;
+        // Retorna para Listagem de Clientes
       });
+    history.push("..");
+
+    // setSubmitting(true);
 
     console.log("Cliente Atualizado");
-    return () => upClient();
   }
 
   function onBlurCNPJ(ev, setFieldValue) {
@@ -153,40 +175,45 @@ function AddEdit({ history, match }) {
     >
       {({ errors, touched, isSubmitting, setFieldValue }) => {
         useEffect(() => {
+          // lendo todos os CNPJS
+          const lista = [];
+          db.onSnapshot((querySnapshot) => {
+            querySnapshot.forEach((doc) => {
+              lista.push(doc.data().cpfcnpj);
+            });
+            setCnpjs(lista);
+          });
+
           if (isAddMode) {
             setFieldValue({ ...initialValues });
           } else {
-            let listClient = firebaseDb
-              .firestore()
-              .collection("clients")
-              .doc(id)
-              .onSnapshot((dataSnapshot) => {
-                setFieldValue("cpfcnpj", dataSnapshot.data().cpfcnpj);
-                setFieldValue("rgie", dataSnapshot.data().rgie);
-                setFieldValue("contato", dataSnapshot.data().contato);
-                setFieldValue("fantasia", dataSnapshot.data().fantasia);
-                setFieldValue("razao", dataSnapshot.data().razao);
-                setFieldValue("telefone", dataSnapshot.data().telefone);
-                setFieldValue("email", dataSnapshot.data().email);
-                setFieldValue("cep", dataSnapshot.data().cep);
-                setFieldValue("rua", dataSnapshot.data().rua);
-                setFieldValue("numero", dataSnapshot.data().numero);
-                setFieldValue("complemento", dataSnapshot.data().complemento);
-                setFieldValue("bairro", dataSnapshot.data().bairro);
-                setFieldValue("cidade", dataSnapshot.data().cidade);
-                setFieldValue("uf", dataSnapshot.data().uf);
-                setFieldValue("atualizado", dataSnapshot.data().atualizado);
-                setFieldValue("sistema1", dataSnapshot.data().sistema1);
-                setFieldValue("sistema2", dataSnapshot.data().sistema2);
-                setFieldValue("validade", dataSnapshot.data().validade);
-                setFieldValue("obs", dataSnapshot.data().obs);
-                setFieldValue("registro", dataSnapshot.data().registro);
-                setFieldValue("anydesk", dataSnapshot.data().anydesk);
-                setFieldValue("mensalidade", dataSnapshot.data().mensalidade);
-                setFieldValue("receberdia", dataSnapshot.data().receberdia);
-                setFieldValue("custo", dataSnapshot.data().custo);
-                setFieldValue("pagardia", dataSnapshot.data().pagardia);
-              });
+            let listClient = db.doc(id).onSnapshot((dataSnapshot) => {
+              setFieldValue("cpfcnpj", dataSnapshot.data().cpfcnpj);
+              setFieldValue("rgie", dataSnapshot.data().rgie);
+              setFieldValue("contato", dataSnapshot.data().contato);
+              setFieldValue("fantasia", dataSnapshot.data().fantasia);
+              setFieldValue("razao", dataSnapshot.data().razao);
+              setFieldValue("telefone", dataSnapshot.data().telefone);
+              setFieldValue("email", dataSnapshot.data().email);
+              setFieldValue("cep", dataSnapshot.data().cep);
+              setFieldValue("rua", dataSnapshot.data().rua);
+              setFieldValue("numero", dataSnapshot.data().numero);
+              setFieldValue("complemento", dataSnapshot.data().complemento);
+              setFieldValue("bairro", dataSnapshot.data().bairro);
+              setFieldValue("cidade", dataSnapshot.data().cidade);
+              setFieldValue("uf", dataSnapshot.data().uf);
+              setFieldValue("atualizado", dataSnapshot.data().atualizado);
+              setFieldValue("sistema1", dataSnapshot.data().sistema1);
+              setFieldValue("sistema2", dataSnapshot.data().sistema2);
+              setFieldValue("validade", dataSnapshot.data().validade);
+              setFieldValue("obs", dataSnapshot.data().obs);
+              setFieldValue("registro", dataSnapshot.data().registro);
+              setFieldValue("anydesk", dataSnapshot.data().anydesk);
+              setFieldValue("mensalidade", dataSnapshot.data().mensalidade);
+              setFieldValue("receberdia", dataSnapshot.data().receberdia);
+              setFieldValue("custo", dataSnapshot.data().custo);
+              setFieldValue("pagardia", dataSnapshot.data().pagardia);
+            });
             return () => listClient();
           }
         }, [id]);

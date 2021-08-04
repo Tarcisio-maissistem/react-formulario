@@ -93,35 +93,35 @@ export function configureFakeBackend() {
                 return ok();
             }
 
-            function createClient() {
-                try {
-                    let newClients = [];
+            // function createClient() {
+            //     try {
+            //         let newClients = [];
 
-                    const client = body();
-                    const idClient = client.cpfcnpj;
-                    client.dateCreated = new Date();
+            //         const client = body();
+            //         const idClient = client.cpfcnpj;
+            //         client.dateCreated = new Date();
 
-                    firebaseDb.firestore().collection("clients").onSnapshot((snapshot) => {
-                        // newClients.push(snapshot.docs.map((doc) => (doc.id)))
-                        newClients.push(snapshot.forEach(function (doc) { doc.id }))
-                        console.log(newClients)
+            //         firebaseDb.firestore().collection("clients").onSnapshot((snapshot) => {
+            //             // newClients.push(snapshot.docs.map((doc) => (doc.id)))
+            //             newClients.push(snapshot.forEach(function (doc) { doc.id }))
+            //             console.log(newClients)
 
-                    })
+            //         })
 
-                    if (newClients.includes(idClient)) {
-                        console.log('Ja existe no Banco')
-                        return error(`Cliente já existente!`);
-                    }
+            //         if (newClients.includes(idClient)) {
+            //             console.log('Ja existe no Banco')
+            //             return error(`Cliente já existente!`);
+            //         }
 
-                    firebaseDb.firestore().collection(`clients`).doc(idClient).set(client);
-                    console.log('Cliente Cadastrado!')
-                    return ok();
-                }
-                catch (e) {
-                    return console.log(e);
-                }
+            //         firebaseDb.firestore().collection(`clients`).doc(idClient).set(client);
+            //         console.log('Cliente Cadastrado!')
+            //         return ok();
+            //     }
+            //     catch (e) {
+            //         return console.log(e);
+            //     }
 
-            }
+            // }
 
             function updateUser() {
                 let params = body();
@@ -141,27 +141,27 @@ export function configureFakeBackend() {
                 return ok();
             }
 
-            function updateClient() {
-                let params = body();
-                let idClient = params.cpfcnpj;
-                params.atualizado = new Date().toISOString();
+            // function updateClient() {
+            //     let params = body();
+            //     let idClient = params.cpfcnpj;
+            //     params.atualizado = new Date().toISOString();
 
-                try {
-                    firebaseDb.child(`clients/${idClient}`).set(
-                        params,
-                        err => {
-                            if (err) {
-                                console.log(err)
-                            }
-                        }
-                    )
-                    console.log('Cliente Cadastrado!')
-                    return ok();
-                }
-                catch (e) {
-                    logMyErrors(e)
-                }
-            }
+            //     try {
+            //         firebaseDb.child(`clients/${idClient}`).set(
+            //             params,
+            //             err => {
+            //                 if (err) {
+            //                     console.log(err)
+            //                 }
+            //             }
+            //         )
+            //         console.log('Cliente Cadastrado!')
+            //         return ok();
+            //     }
+            //     catch (e) {
+            //         logMyErrors(e)
+            //     }
+            // }
 
             function deleteUser() {
                 users = users.filter(x => x.id !== idFromUrl());
@@ -169,10 +169,6 @@ export function configureFakeBackend() {
 
                 return ok();
             }
-
-            // function deleteClient(idClient) {
-
-            // }
 
             // funções auxiliares
             function ok(body) {

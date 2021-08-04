@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import firebaseDb from "../_helpers/firebase";
-import "firebase/database";
 import swal from "sweetalert";
 
 function List({ match }) {
   const { path } = match;
   const [clients, setClients] = useState(null);
+  const db = firebaseDb.firestore().collection("clients");
 
   useEffect(() => {
-    const listClients = firebaseDb
-      .firestore()
-      .collection("clients")
-      .onSnapshot((snapshot) => {
-        const newClients = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setClients(newClients);
-      });
-    return () => listClients();
+    db.onSnapshot((snapshot) => {
+      const newClients = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setClients(newClients);
+    });
   }, []);
 
   function deleteClient(id) {
@@ -31,10 +27,14 @@ function List({ match }) {
       dangerMode: true
     }).then(function (isConfirm) {
       if (isConfirm) {
-        firebaseDb.child(`clients/${id}`).remove((err) => {
-          if (err) console.log(err);
-          else swal("Removido!", "", "success");
-        });
+        db.doc(id)
+          .delete()
+          .then(function () {
+            swal("Removido!", "", "success");
+          })
+          .catch(function (error) {
+            swal("Cancelado!", "seu arquivo está seguro!", "error");
+          });
       } else {
         swal("Cancelado!", "seu arquivo está seguro!", "error");
       }
@@ -43,7 +43,7 @@ function List({ match }) {
 
   return (
     <div>
-      <h1>Clientes</h1>
+      <h1>Listagem de Clientes</h1>
       <Link to={`${path}/add`} className="btn btn-sm btn-success mb-2">
         Adicionar Cliente
       </Link>
