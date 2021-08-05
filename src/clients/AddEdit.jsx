@@ -62,10 +62,6 @@ function AddEdit({ history, match }) {
       if (cnpjs.includes(fields.cpfcnpj)) {
         console.log("Ja existe no Banco");
 
-        // swal("Cancelado!", "Cliente ja existente!", "error");
-        // setSubmitting(false);
-
-        // return alertService.error(error);
         swal({
           title: "Cliente já existe! Deseja atualizar?",
           text: "Se confirmar iremos atualizar-lo",

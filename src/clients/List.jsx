@@ -91,7 +91,7 @@ function List({ match }) {
             ))}
           {!clients && (
             <tr>
-              <td colSpan="4" className="text-center">
+              <td colSpan="4" className="text-cent">
                 <div className="spinner-border spinner-border-lg align-center"></div>
               </td>
             </tr>
