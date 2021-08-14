@@ -7,7 +7,7 @@
     },
     "license": "MIT",
     "scripts": {
-        "build": "npm install --prefix client && npm run build --prefix client",
+        "build": "webpack --mode production",
         "start": "webpack-dev-server --open"
     },
     "dependencies": {
